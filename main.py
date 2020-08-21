@@ -30,8 +30,8 @@ class AdmissionQueue:
 
         i18n.load_path.append(translations_dir)
         i18n.set('filename_format', '{locale}.{format}')
-        i18n.set('locale', 'ru')
-        i18n.set('fallback', 'en')
+        i18n.set('locale', 'ua')
+        i18n.set('fallback', 'ua')
 
 
 if __name__ == '__main__':

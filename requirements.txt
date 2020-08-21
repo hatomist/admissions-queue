@@ -1,0 +1,5 @@
+aiogram~=2.9.2
+aiohttp~=3.6.2
+motor~=2.2.0
+python-i18n~=0.3.7
+PyYAML~=5.3.1

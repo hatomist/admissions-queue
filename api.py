@@ -69,7 +69,7 @@ class AdmissionAPI:
         async with aiohttp.ClientSession(headers=self.headers) as session:
             async with session.get(self.host + f'/templates/registration') as resp:
                 assert resp.status == 200
-                self.logger.debug(f'Registration template: {resp.json()}')
+                self.logger.debug(f'Registration template: {await resp.json()}')
                 return await resp.json()
 
     async def add_user_to_queue(self, queue_id: Union[str, int], uid: Union[str, int]):

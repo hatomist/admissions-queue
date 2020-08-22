@@ -18,6 +18,7 @@ class AdmissionAPI:
         json['first_name'] = first_name
         if last_name is not None:
             json['last_name'] = last_name
+        json['id'] = str(uid)
         async with aiohttp.ClientSession(headers=self.headers) as session:
             async with session.post(self.host + '/users', json=json) as resp:
                 assert resp.status == 200 or resp.status == 409

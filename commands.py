@@ -21,7 +21,7 @@ def apply_handlers(aq: AdmissionQueue):
                 pass  # some other input expected
         else:
             await aq.aapi.register_user(message.from_user.id,
-                                        message.from_user.mention if message.from_user.mention.startswith(
+                                        message.from_user.mention[1:] if message.from_user.mention.startswith(
                                             '@') else None,
                                         message.from_user.first_name,
                                         message.from_user.last_name)

@@ -5,3 +5,4 @@ class Stage:
     get_certnum = 3
     get_fio = 4
     template = 5
+    leave_queue = 6

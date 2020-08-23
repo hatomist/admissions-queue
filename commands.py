@@ -7,6 +7,7 @@ from stages import Stage
 from utils import get_spherical_distance
 import config
 import logging
+from aiogram.utils import exceptions
 
 logger = logging.getLogger('commands')
 
@@ -16,8 +17,15 @@ def apply_handlers(aq: AdmissionQueue):
         user = await db.users.find_one({'uid': message.from_user.id})
         if user is not None:
             if user['stage'] == Stage.menu:
-                await message.answer(t('MENU', locale=user['lang']), reply_markup=keyboards.get_menu_kbd(user['lang']))
-            else:
+                await message.answer(t('MENU', locale=user['lang']), reply_markup=keyboards.get_menu_kbd(user['lang']),
+                                     parse_mode=types.ParseMode.HTML)
+            elif user['stage'] == Stage.geo:
+                await db.users.find_one_and_update({'uid': user['uid']}, {'$set': {'stage': Stage.menu}})
+                await message.answer(t('MENU', locale=user['lang']), reply_markup=keyboards.get_menu_kbd(user['lang']),
+                                     parse_mode=types.ParseMode.HTML)
+            elif user['stage'] in [Stage.get_certnum, Stage.get_fio, Stage.template]:
+                await db.users.delete_one({'uid': user['uid']})
+                await start_handler(message)  # recursive
                 pass  # some other input expected
         else:
             await aq.aapi.register_user(message.from_user.id,
@@ -31,7 +39,11 @@ def apply_handlers(aq: AdmissionQueue):
                 await message.reply(t('PRE_REG', locale='ua'), reply_markup=keyboards.get_reg_kbd())
             else:
                 user = db.users.insert_one({'uid': message.from_user.id, 'lang': 'ua', 'stage': Stage.geo})
-                await message.reply(t('GEO', locale='ua'), reply_markup=keyboards.get_geo_kbd())
+                await message.reply(t('MENU', locale='ua'), reply_markup=keyboards.get_menu_kbd(),
+                                    parse_mode=types.ParseMode.HTML)
+
+    async def help_handler(message: types.Message):
+        await message.reply(t('SUPPORT'), reply_markup=keyboards.get_info_kbd())
 
     async def query_handler(query: types.CallbackQuery):
         user = await db.users.find_one({'uid': query.from_user.id})
@@ -49,10 +61,74 @@ def apply_handlers(aq: AdmissionQueue):
                                                                                'template_stage': 0,
                                                                                'tokens_num': num,
                                                                                'template': template}})
-            await query.message.answer(template['tokens'][0]['name'])
+            await query.message.answer(template['tokens'][0]['text'])
 
-        else:
-            logger.warning(f'Got invalid command {query.data}')
+        elif query.data.startswith('AllQueues'):
+            queues = (await aq.aapi.list_queues())['queues']
+            await query.message.edit_text(t('ALL_QUEUES', locale=user['lang']),
+                                          reply_markup=keyboards.get_queues_kbd(queues, my_queues=False))
+
+        elif query.data.startswith('MyQueues'):
+            user_data = await aq.aapi.get_user_info(user['uid'])
+            queues = user_data['queues']
+            await query.message.edit_text(t('MY_QUEUES', locale=user['lang']),
+                                          reply_markup=keyboards.get_queues_kbd(queues, my_queues=True))
+
+        elif query.data.startswith('GetQueue'):
+            user_data = await aq.aapi.get_user_info(user['uid'])
+            queues = user_data['queues']
+            queue_id = int(query.data.split('GetQueue', 1)[1])
+            if any(map(lambda x: queue_id == x['id'], queues)):  # user already in queue
+                query.data = f'GetMyQueue{queue_id}'  # edit data to pass query to GetMyQueue handler
+            else:
+                await db.users.find_one_and_update({'uid': user['uid']},
+                                                   {'$set': {'get_queue': queue_id, 'stage': Stage.geo}})
+                return await query.message.answer(t('GEO', locale=user['lang']),
+                                                  reply_markup=keyboards.get_geo_kbd(user['lang']))
+
+        if query.data.startswith('GetMyQueue'):
+            user_data = await aq.aapi.get_user_info(user['uid'])
+            queues = user_data['queues']
+            queue_id = int(query.data.split('GetMyQueue', 1)[1])
+            try:
+                queue = list(filter(lambda x: queue_id == x['id'], queues))[0]
+            except IndexError:
+                return await query.answer(t('USER_NO_MORE_IN_QUEUE'), user['lang'])
+            try:
+                return await query.message.edit_text(t('USER_QUEUE_INFO', locale=user['lang'], queue_name=queue['name'],
+                                                       pos=queue['position']['relativePosition']),
+                                                     reply_markup=keyboards.get_update_my_queue_kbd(queue_id,
+                                                                                                    user['lang']),
+                                                     parse_mode=types.ParseMode.HTML)
+            except exceptions.MessageNotModified:
+                await query.answer(t('NO_UPDATES', locale=user['lang']))
+
+        elif query.data.startswith('LeaveQueue'):
+            queue_id = int(query.data.split('LeaveQueue', 1)[1])
+            await db.users.find_one_and_update({'uid': user['uid']},
+                                               {'$set': {'leave_queue': queue_id, 'stage': Stage.leave_queue}})
+            return await query.message.edit_text(t('LEAVE_QUEUE'), reply_markup=keyboards.get_to_menu_kbd(user['lang']))
+
+        elif query.data.startswith('RegInQueue'):
+            queue_id = int(query.data.split('RegInQueue', 1)[1])
+            await aq.aapi.add_user_to_queue(user['uid'], queue_id)
+            await query.message.edit_text(t('REGISTER_IN_QUEUE_SUCCESS', locale=user['lang']),
+                                          reply_markup=keyboards.get_menu_kbd(user['lang']))
+
+        elif query.data.startswith('Menu'):
+            await db.users.find_one_and_update({'uid': user}, {'$set': {'stage': Stage.menu}})
+            await query.message.edit_text(t('MENU', locale=user['lang']),
+                                          reply_markup=keyboards.get_menu_kbd(user['lang']),
+                                          parse_mode=types.ParseMode.HTML)
+
+        elif query.data.startswith('ChangeData'):
+            await db.users.delete_one({'uid': user['uid']})
+            await start_handler(query.message)
+
+        # else:
+        #     logger.warning(f'Got invalid command {query.data}')
+
+        await query.answer()
 
     async def location_handler(message: types.Message):
         lat = message.location.latitude
@@ -60,18 +136,30 @@ def apply_handlers(aq: AdmissionQueue):
         user = await db.users.find_one({'uid': message.from_user.id})
 
         if user is None:
-            return await message.reply(t('ERROR_RESTART'))
+            return await start_handler(message)
 
         if user['stage'] != Stage.geo:
             return  # ignore
 
-        if get_spherical_distance(lat, lon, config.LAT, config.LON) > config.RADIUS:
+        if (get_spherical_distance(lat, lon, config.LAT, config.LON) > config.RADIUS) or \
+                (message.forward_from is not None):
             return await message.reply(t('GEO_FAILED', locale=user['lang']), reply_markup=keyboards.get_geo_kbd())
         else:
             await db.users.find_one_and_update({'uid': message.from_user.id}, {'$set': {'stage': Stage.menu}})
             await message.reply(t('GEO_SUCCESS', locale=user['lang']),
                                 reply_markup=types.ReplyKeyboardRemove())
-            await message.answer(t('MENU', locale=user['lang']), reply_markup=keyboards.get_menu_kbd(user['lang']))
+            await aq.aapi.add_user_to_queue(user['get_queue'], user['uid'])
+
+            user_data = await aq.aapi.get_user_info(user['uid'])
+            queues = user_data['queues']
+            queue_id = user['get_queue']
+            queue = list(filter(lambda x: queue_id == x['id'], queues))[0]
+
+            await message.answer(t('USER_QUEUE_INFO', locale=user['lang'], queue_name=queue['name'],
+                                   pos=queue['position']['relativePosition']),
+                                 reply_markup=keyboards.get_update_my_queue_kbd(queue_id,
+                                                                                user['lang']),
+                                 parse_mode=types.ParseMode.HTML)
 
     async def text_handler(message: types.Message):
         user = await db.users.find_one({'uid': message.from_user.id})
@@ -93,7 +181,8 @@ def apply_handlers(aq: AdmissionQueue):
 
             await db.users.find_one_and_update({'uid': user['uid']},
                                                {'$set': {'stage': Stage.geo, 'fio': message.text}})
-            await message.reply(t('GEO', locale=user['lang']), reply_markup=keyboards.get_geo_kbd(user['lang']))
+            await message.answer(t('MENU', locale=user['lang']), reply_markup=keyboards.get_menu_kbd(user['lang']),
+                                 parse_mode=types.ParseMode.HTML)
 
         elif user['stage'] == Stage.template:
             data = {'t_' + user['template']['tokens'][user['template_stage']]['token']: message.text.strip()}
@@ -108,21 +197,29 @@ def apply_handlers(aq: AdmissionQueue):
 
                 await aq.aapi.set_user_details(user['uid'], data)
 
-                await message.answer(t('GEO', locale=user['lang']), reply_markup=keyboards.get_geo_kbd(user['lang']))
+                await message.answer(t('MENU', locale=user['lang']), reply_markup=keyboards.get_menu_kbd(user['lang']),
+                                     parse_mode=types.ParseMode.HTML)
 
                 return await db.users.find_one_and_update({'uid': user['uid']},
                                                           {'$set': {**data, 'stage': Stage.geo},
                                                            '$inc': {'template_stage': 1},
                                                            '$unset': {'template': ''}})
 
-            await message.answer(user['template']['tokens'][user['template_stage'] + 1]['name'])
+            await message.answer(user['template']['tokens'][user['template_stage'] + 1]['text'])
 
             await db.users.find_one_and_update({'uid': user['uid']},
                                                {'$set': {**data},
                                                 '$inc': {'template_stage': 1}})
 
+        elif user['stage'] == Stage.leave_queue:
+            if message.text.strip().lower() in ['да', 'так', 'yes', 'д', 'y']:
+                await aq.aapi.remove_user_from_queue(user['leave_queue'], user['uid'])
+                await message.answer(t('MENU', locale=user['lang']), reply_markup=keyboards.get_menu_kbd(user['lang']),
+                                     parse_mode=types.ParseMode.HTML)
+
     handlers = [
         {'fun': start_handler, 'named': {'commands': ['start']}},
+        {'fun': help_handler, 'named': {'commands': ['info', 'help', 'support']}},
         {'fun': location_handler, 'named': {'content_types': types.ContentType.LOCATION}},
         {'fun': text_handler, 'named': {'content_types': types.ContentType.TEXT}}
     ]

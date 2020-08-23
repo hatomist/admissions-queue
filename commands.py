@@ -14,7 +14,7 @@ logger = logging.getLogger('commands')
 
 def apply_handlers(aq: AdmissionQueue):
     async def start_handler(message: types.Message):
-        user = await db.users.find_one({'uid': message.from_user.id})
+        user = await db.users.find_one({'uid': message.chat.id})
         if user is not None:
             if user['stage'] == Stage.menu:
                 await message.answer(t('MENU', locale=user['lang']), reply_markup=keyboards.get_menu_kbd(user['lang']),
@@ -35,10 +35,10 @@ def apply_handlers(aq: AdmissionQueue):
                                         message.from_user.last_name)
 
             if config.REGISTRATION:
-                user = db.users.insert_one({'uid': message.from_user.id, 'lang': 'ua', 'stage': Stage.register_btns})
+                user = db.users.insert_one({'uid': message.chat.id, 'lang': 'ua', 'stage': Stage.register_btns})
                 await message.reply(t('PRE_REG', locale='ua'), reply_markup=keyboards.get_reg_kbd())
             else:
-                user = db.users.insert_one({'uid': message.from_user.id, 'lang': 'ua', 'stage': Stage.geo})
+                user = db.users.insert_one({'uid': message.chat.id, 'lang': 'ua', 'stage': Stage.geo})
                 await message.reply(t('MENU', locale='ua'), reply_markup=keyboards.get_menu_kbd(),
                                     parse_mode=types.ParseMode.HTML)
 
@@ -132,6 +132,7 @@ def apply_handlers(aq: AdmissionQueue):
         elif query.data.startswith('ChangeData'):
             await db.users.delete_one({'uid': user['uid']})
             await start_handler(query.message)
+            await query.message.delete_reply_markup()
 
         # else:
         #     logger.warning(f'Got invalid command {query.data}')

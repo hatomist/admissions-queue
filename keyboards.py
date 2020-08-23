@@ -47,7 +47,7 @@ def get_menu_kbd(lang='ua'):
                 types.InlineKeyboardButton(t('TECHSUPPORT_BTN', locale=lang), url=t('LIVEGRAM_URL', locale=lang)),
             ),
             (
-                types.InlineKeyboardButton(t('CHANGE_DATA_BTN', locale=lang), callback_data='ChangeData')
+                types.InlineKeyboardButton(t('CHANGE_DATA_BTN', locale=lang), callback_data='ChangeData'),
             )
         )
     )

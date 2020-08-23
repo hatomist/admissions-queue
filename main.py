@@ -53,4 +53,26 @@ class AdmissionQueue:
 
 if __name__ == '__main__':
     aq = AdmissionQueue()
-    executor.start_polling(aq.dp, skip_updates=True)
+
+    if 'WEBHOOK_HOST' in os.environ:
+        host = os.environ['WEBHOOK_HOST']
+        port = os.environ['WEBHOOK_PORT']
+
+
+        async def on_startup(dp):
+            await aq.bot.set_webhook(host)
+
+        async def on_shutdown(dp):
+            await aq.bot.delete_webhook()
+
+        executor.start_webhook(
+            aq.dp,
+            webhook_path='',
+            on_startup=on_startup,
+            on_shutdown=on_shutdown,
+            host='localhost',
+            port=port
+        )
+
+    else:
+        executor.start_polling(aq.dp, skip_updates=True)

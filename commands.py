@@ -65,14 +65,22 @@ def apply_handlers(aq: AdmissionQueue):
 
         elif query.data.startswith('AllQueues'):
             queues = (await aq.aapi.list_queues())['queues']
-            await query.message.edit_text(t('ALL_QUEUES', locale=user['lang']),
-                                          reply_markup=keyboards.get_queues_kbd(queues, my_queues=False))
+            num = len(list(filter(lambda x: x['active'], queues)))
+            if num > 0:
+                await query.message.edit_text(t('ALL_QUEUES', locale=user['lang']),
+                                              reply_markup=keyboards.get_queues_kbd(queues, my_queues=False))
+            else:
+                await query.answer(t('NO_QUEUES', locale=user['lang']))
 
         elif query.data.startswith('MyQueues'):
             user_data = await aq.aapi.get_user_info(user['uid'])
             queues = user_data['queues']
-            await query.message.edit_text(t('MY_QUEUES', locale=user['lang']),
-                                          reply_markup=keyboards.get_queues_kbd(queues, my_queues=True))
+            num = len(list(filter(lambda x: x['active'], queues)))
+            if num > 0:
+                await query.message.edit_text(t('MY_QUEUES', locale=user['lang']),
+                                              reply_markup=keyboards.get_queues_kbd(queues, my_queues=True))
+            else:
+                await query.answer(t('NO_MY_QUEUES', locale=user['lang']))
 
         elif query.data.startswith('GetQueue'):
             user_data = await aq.aapi.get_user_info(user['uid'])

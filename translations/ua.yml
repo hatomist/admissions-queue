@@ -33,3 +33,5 @@ ua:
   TELEGRAPH_URL: "https://telegra.ph/DUMMY"
   LIVEGRAM_URL: "https://t.me/fiot_help_bot"
   CHANGE_DATA_BTN: "Змінити реєстраційні дані"
+  NO_QUEUES: "Наразі немає активних черг"
+  NO_MY_QUEUES: "Ви не зареєстровані у активних чергах"

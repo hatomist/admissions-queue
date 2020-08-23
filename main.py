@@ -1,11 +1,13 @@
 import logging
 import os
 from os import getcwd, path
+from aiohttp import web
 import commands
 from aiogram import Bot, Dispatcher, executor, types
 import i18n
 from api import AdmissionAPI
 from SafeBot import SafeBot
+from urllib.parse import parse_qs
 
 
 class AdmissionQueue:
@@ -49,6 +51,19 @@ class AdmissionQueue:
         i18n.set('filename_format', '{locale}.{format}')
         i18n.set('locale', 'ua')
         i18n.set('fallback', 'ua')
+
+        async def send_message_handler(request: web.Request):
+            if request.headers['Authorization'] != f'Bearer {aapi_token}':
+                return web.Response(status=401)
+            query = parse_qs(request.query_string)
+            await self.bot.send_message(chat_id=query['uid'][0], text=query['text'][0],
+                                        parse_mode=query['parse_mode'][0] if 'parse_mode' in query else None)
+            return web.Response()
+
+        webapp = web.Application()
+        webapp.router.add_post('/sendMessage', send_message_handler)
+
+        web.run_app(webapp, port=5006, host='127.0.0.1')
 
 
 if __name__ == '__main__':

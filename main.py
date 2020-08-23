@@ -63,7 +63,7 @@ class AdmissionQueue:
         webapp = web.Application()
         webapp.router.add_post('/sendMessage', send_message_handler)
 
-        web.run_app(webapp, port=5006, host='127.0.0.1')
+        self.runner = web.AppRunner(webapp)
 
 
 if __name__ == '__main__':
@@ -75,6 +75,9 @@ if __name__ == '__main__':
 
 
         async def on_startup(dp):
+            await aq.runner.setup()
+            site = web.TCPSite(aq.runner, "127.0.0.1", 5006)
+            await site.start()
             await aq.bot.set_webhook(host)
 
         async def on_shutdown(dp):

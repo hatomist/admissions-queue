@@ -16,6 +16,8 @@ class SafeBot(Bot):
                 await self._events.pop()
             except IndexError:
                 pass
+            except Exception as e:
+                logging.error('Exception in event scheduler:', e)
 
         self._scheduler = Timer(1 / 30, event_scheduler, infinite=True, immediate=True)
         super().__init__(token)

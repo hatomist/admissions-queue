@@ -10,6 +10,8 @@ import config
 from api import AdmissionAPI
 from SafeBot import SafeBot
 from urllib.parse import parse_qs
+from aioprometheus import render, Registry, Counter, Service
+import prometheus
 
 
 class AdmissionQueue:
@@ -54,6 +56,8 @@ class AdmissionQueue:
         i18n.set('locale', 'ua')
         i18n.set('fallback', 'ua')
 
+        # sendMessage endpoint setup
+
         async def send_message_handler(request: web.Request):
             if request.headers['Authorization'] != f'Bearer {aapi_token}':
                 return web.Response(status=401)
@@ -65,6 +69,17 @@ class AdmissionQueue:
         webapp = web.Application()
         webapp.router.add_post('/sendMessage', send_message_handler)
 
+        # Prometheus setup
+        self._prometheus_registry = Registry()
+        self._prometheus_registry.register(prometheus.bot_requests_cnt)
+
+        async def metrics_handler(request: web.Request):
+            content, headers = render(self._prometheus_registry, [request.headers.get('accept')])
+            return web.Response(body=content, headers=headers)
+
+        webapp.router.add_get('/metrics', metrics_handler)
+
+        # Run web server
         self.runner = web.AppRunner(webapp)
 
 

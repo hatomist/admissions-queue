@@ -241,6 +241,7 @@ def apply_handlers(aq: AdmissionQueue):
                     await aq.aapi.remove_user_from_queue(user['leave_queue'], user['uid'])
                 except KeyError:
                     pass  # ignore if already removed
+                await db.users.find_one_and_update({'uid': user['uid']}, {'$set': {'stage': Stage.menu}})
                 await message.answer(t('MENU', locale=user['lang']), reply_markup=keyboards.get_menu_kbd(user['lang']),
                                      parse_mode=types.ParseMode.HTML)
 

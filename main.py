@@ -5,6 +5,8 @@ from aiohttp import web
 import commands
 from aiogram import Bot, Dispatcher, executor, types
 import i18n
+
+import config
 from api import AdmissionAPI
 from SafeBot import SafeBot
 from urllib.parse import parse_qs
@@ -13,7 +15,7 @@ from urllib.parse import parse_qs
 class AdmissionQueue:
     def __init__(self):
         # Logging setup
-        logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        logging.basicConfig(level=config.LOGLEVEL, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
         # Bot setup
         try:

@@ -17,11 +17,11 @@ class SafeBot(Bot):
         async def event_scheduler():
             try:
                 await self._events.pop(0)
-                prometheus.bot_requests_cnt.inc({'event': 'sendOrEdit'})
+                prometheus.bot_requests_cnt.inc({})
             except IndexError:
                 pass
             except Exception as e:
-                prometheus.bot_requests_cnt.inc({'event': 'sendOrEdit'})
+                prometheus.bot_requests_cnt.inc({})
                 logging.error('Exception in event scheduler:', e)
 
         self._scheduler = Timer(1 / self._reqs_per_second, event_scheduler, infinite=True, immediate=True)

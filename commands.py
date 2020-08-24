@@ -8,12 +8,14 @@ from utils import get_spherical_distance
 import config
 import logging
 from aiogram.utils import exceptions
+import prometheus
 
 logger = logging.getLogger('commands')
 
 
 def apply_handlers(aq: AdmissionQueue):
     async def start_handler(message: types.Message):
+        prometheus.start_handler_cnt.inc({})
         user = await db.users.find_one({'uid': message.chat.id})
         if user is not None:
             if user['stage'] == Stage.menu:
@@ -35,6 +37,7 @@ def apply_handlers(aq: AdmissionQueue):
                                         message.from_user.last_name)
 
             if config.REGISTRATION:
+                prometheus.user_registrations_cnt.inc({})
                 user = db.users.insert_one({'uid': message.chat.id, 'lang': 'ua', 'stage': Stage.register_btns})
                 await message.reply(t('PRE_REG', locale='ua'), reply_markup=keyboards.get_reg_kbd())
             else:
@@ -43,6 +46,7 @@ def apply_handlers(aq: AdmissionQueue):
                                     parse_mode=types.ParseMode.HTML)
 
     async def help_handler(message: types.Message):
+        prometheus.help_btn_cnt.inc({})
         await message.reply(t('SUPPORT'), reply_markup=keyboards.get_info_kbd())
 
     async def query_handler(query: types.CallbackQuery):
@@ -96,6 +100,7 @@ def apply_handlers(aq: AdmissionQueue):
                                                   reply_markup=keyboards.get_geo_kbd(user['lang']))
 
         elif query.data.startswith('GetMyQueue'):
+            prometheus.get_my_queue_cnt.inc({})
             user_data = await aq.aapi.get_user_info(user['uid'])
             queues = user_data['queues']
             queue_id = int(query.data.split('GetMyQueue', 1)[1])
@@ -134,6 +139,7 @@ def apply_handlers(aq: AdmissionQueue):
             return await query.message.edit_text(t('LEAVE_QUEUE'), reply_markup=keyboards.get_to_menu_kbd(user['lang']))
 
         elif query.data.startswith('RegInQueue'):
+            prometheus.queue_registrations_cnt.inc({})
             queue_id = int(query.data.split('RegInQueue', 1)[1])
             await aq.aapi.add_user_to_queue(user['uid'], queue_id)
             await query.message.edit_text(t('REGISTER_IN_QUEUE_SUCCESS', locale=user['lang']),

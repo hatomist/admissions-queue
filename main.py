@@ -73,6 +73,20 @@ class AdmissionQueue:
         # Prometheus setup
         self._prometheus_registry = Registry()
         self._prometheus_registry.register(prometheus.bot_requests_cnt)
+        self._prometheus_registry.register(prometheus.user_registrations_cnt)
+        self._prometheus_registry.register(prometheus.queue_registrations_cnt)
+        self._prometheus_registry.register(prometheus.get_my_queue_cnt)
+        self._prometheus_registry.register(prometheus.geo_sent_cnt)
+        self._prometheus_registry.register(prometheus.help_btn_cnt)
+        self._prometheus_registry.register(prometheus.start_handler_cnt)
+
+        prometheus.bot_requests_cnt.set({}, 0)
+        prometheus.user_registrations_cnt.set({}, 0)
+        prometheus.queue_registrations_cnt.set({}, 0)
+        prometheus.get_my_queue_cnt.set({}, 0)
+        prometheus.geo_sent_cnt.set({}, 0)
+        prometheus.help_btn_cnt.set({}, 0)
+        prometheus.start_handler_cnt.set({}, 0)
 
         async def metrics_handler(request: web.Request):
             content, headers = render(self._prometheus_registry, [request.headers.get('accept')])

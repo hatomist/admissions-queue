@@ -8,18 +8,48 @@ from timer import Timer
 
 
 class SafeBot(Bot):
+
+    def _add_scheduler_tick(self, is_action: bool):
+        if len(self._la1) >= self._reqs_per_second * 60:
+            self._la1.pop(0)
+        self._la1.append(is_action)
+        if len(self._la5) >= self._reqs_per_second * 60 * 5:
+            self._la5.pop(0)
+        self._la5.append(is_action)
+        if len(self._la15) >= self._reqs_per_second * 60 * 15:
+            self._la15.pop(0)
+        self._la15.append(is_action)
+
+    def get_average_load(self):
+        return {
+            1: self._la1.count(True) / len(self._la1),
+            5: self._la5.count(True) / len(self._la5),
+            15: self._la15.count(True) / len(self._la15)
+        }
+
     def __init__(self, token):
         self._events = []
+        self._la1 = []
+        self._la5 = []
+        self._la15 = []
+        self._reqs_per_second = 30
 
         async def event_scheduler():
             try:
-                await self._events.pop()
+                await self._events.pop(0)
+                self._add_scheduler_tick(True)
             except IndexError:
-                pass
+                self._add_scheduler_tick(False)
             except Exception as e:
+                self._add_scheduler_tick(True)
                 logging.error('Exception in event scheduler:', e)
 
-        self._scheduler = Timer(1 / 30, event_scheduler, infinite=True, immediate=True)
+        async def report_la():
+            la = self.get_average_load()
+            logging.info(f'Load average: {la[1] * 100:.2f}% / 1m, {la[5] * 100:.2f}% / 5m, {la[15] * 100:.2f}% / 15m')
+
+        self._scheduler = Timer(1 / self._reqs_per_second, event_scheduler, infinite=True, immediate=True)
+        self._la_reporter = Timer(60, report_la, infinite=True)
         super().__init__(token)
 
     async def edit_message_text(self, text,

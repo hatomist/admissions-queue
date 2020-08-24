@@ -23,7 +23,7 @@ def apply_handlers(aq: AdmissionQueue):
                 await db.users.find_one_and_update({'uid': user['uid']}, {'$set': {'stage': Stage.menu}})
                 await message.answer(t('MENU', locale=user['lang']), reply_markup=keyboards.get_menu_kbd(user['lang']),
                                      parse_mode=types.ParseMode.HTML)
-            elif user['stage'] in [Stage.get_certnum, Stage.get_fio, Stage.template]:
+            elif user['stage'] in [Stage.get_certnum, Stage.get_fio, Stage.template, Stage.register_btns]:
                 await db.users.delete_one({'uid': user['uid']})
                 await start_handler(message)  # recursive
                 pass  # some other input expected

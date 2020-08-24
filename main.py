@@ -95,7 +95,7 @@ class AdmissionQueue:
         webapp.router.add_get('/metrics', metrics_handler)
 
         # Run web server
-        self.runner = web.AppRunner(webapp)
+        self.webapp = webapp
 
 
 if __name__ == '__main__':
@@ -105,24 +105,19 @@ if __name__ == '__main__':
         host = os.environ['WEBHOOK_HOST']
         port = os.environ['WEBHOOK_PORT']
 
-
         async def on_startup(dp):
-            await aq.runner.setup()
-            site = web.TCPSite(aq.runner, "127.0.0.1", 5006)
-            await site.start()
             await aq.bot.set_webhook(host)
 
         async def on_shutdown(dp):
             await aq.bot.delete_webhook()
 
-        executor.start_webhook(
-            aq.dp,
-            webhook_path='',
-            on_startup=on_startup,
-            on_shutdown=on_shutdown,
-            host='localhost',
-            port=port
-        )
+        e = executor.set_webhook(aq.dp,
+                                 webhook_path='/webhook',
+                                 on_startup=on_startup,
+                                 on_shutdown=on_shutdown,
+                                 web_app=aq.webapp)
+
+        e.run_app(host='localhost', port=port)
 
     else:
         executor.start_polling(aq.dp, skip_updates=True)

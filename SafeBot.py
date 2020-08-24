@@ -12,9 +12,6 @@ import prometheus
 class SafeBot(Bot):
     def __init__(self, token):
         self._events = []
-        self._la1 = []
-        self._la5 = []
-        self._la15 = []
         self._reqs_per_second = 30
 
         async def event_scheduler():

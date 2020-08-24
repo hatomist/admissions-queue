@@ -88,13 +88,14 @@ def apply_handlers(aq: AdmissionQueue):
             queue_id = int(query.data.split('GetQueue', 1)[1])
             if any(map(lambda x: queue_id == x['id'], queues)):  # user already in queue
                 query.data = f'GetMyQueue{queue_id}'  # edit data to pass query to GetMyQueue handler
+                await query_handler(query)  # recursive call modified query
             else:
                 await db.users.find_one_and_update({'uid': user['uid']},
                                                    {'$set': {'get_queue': queue_id, 'stage': Stage.geo}})
                 return await query.message.answer(t('GEO', locale=user['lang']),
                                                   reply_markup=keyboards.get_geo_kbd(user['lang']))
 
-        if query.data.startswith('GetMyQueue'):
+        elif query.data.startswith('GetMyQueue'):
             user_data = await aq.aapi.get_user_info(user['uid'])
             queues = user_data['queues']
             queue_id = int(query.data.split('GetMyQueue', 1)[1])
@@ -103,11 +104,25 @@ def apply_handlers(aq: AdmissionQueue):
             except IndexError:
                 return await query.answer(t('USER_NO_MORE_IN_QUEUE'), user['lang'])
             try:
-                return await query.message.edit_text(t('USER_QUEUE_INFO', locale=user['lang'], queue_name=queue['name'],
-                                                       pos=queue['position']['relativePosition']),
-                                                     reply_markup=keyboards.get_update_my_queue_kbd(queue_id,
-                                                                                                    user['lang']),
-                                                     parse_mode=types.ParseMode.HTML)
+
+                if queue['position']['status'] == 'processing':
+                    return await query.message.edit_text(t('USER_QUEUE_PROCESSING', locale=user['lang'],
+                                                           queue_name=queue['name']),
+                                                         reply_markup=keyboards.get_update_my_queue_kbd(queue_id,
+                                                                                                        user['lang']),
+                                                         parse_mode=types.ParseMode.HTML)
+
+                elif queue['position']['status'] == 'waiting':
+                    return await query.message.edit_text(t('USER_QUEUE_INFO', locale=user['lang'],
+                                                           queue_name=queue['name'],
+                                                           pos=queue['position']['relativePosition']),
+                                                         reply_markup=keyboards.get_update_my_queue_kbd(queue_id,
+                                                                                                        user['lang']),
+                                                         parse_mode=types.ParseMode.HTML)
+
+                else:
+                    logger.error('Unknown queue position status', queue['position']['status'])
+
             except exceptions.MessageNotModified:
                 await query.answer(t('NO_UPDATES', locale=user['lang']))
 
@@ -134,8 +149,8 @@ def apply_handlers(aq: AdmissionQueue):
             await start_handler(query.message)
             await query.message.delete_reply_markup()
 
-        # else:
-        #     logger.warning(f'Got invalid command {query.data}')
+        else:
+            logger.warning(f'Got invalid command {query.data}')
 
         await query.answer()
 

@@ -18,6 +18,7 @@ class AdmissionQueue:
     def __init__(self):
         # Logging setup
         logging.basicConfig(level=config.LOGLEVEL, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        logging.getLogger('aiohttp.access').setLevel(logging.WARNING)
 
         # Bot setup
         try:

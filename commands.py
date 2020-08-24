@@ -106,23 +106,24 @@ def apply_handlers(aq: AdmissionQueue):
             try:
 
                 if queue['position']['status'] == 'processing':
-                    return await query.message.edit_text(t('USER_QUEUE_PROCESSING', locale=user['lang'],
-                                                           queue_name=queue['name']),
-                                                         reply_markup=keyboards.get_update_my_queue_kbd(queue_id,
-                                                                                                        user['lang']),
-                                                         parse_mode=types.ParseMode.HTML)
+                    await query.message.edit_text(t('USER_QUEUE_PROCESSING', locale=user['lang'],
+                                                    queue_name=queue['name']),
+                                                  reply_markup=keyboards.get_update_my_queue_kbd(queue_id,
+                                                                                                 user['lang']),
+                                                  parse_mode=types.ParseMode.HTML)
 
                 elif queue['position']['status'] == 'waiting':
-                    return await query.message.edit_text(t('USER_QUEUE_INFO', locale=user['lang'],
-                                                           queue_name=queue['name'],
-                                                           pos=queue['position']['relativePosition']),
-                                                         reply_markup=keyboards.get_update_my_queue_kbd(queue_id,
-                                                                                                        user['lang']),
-                                                         parse_mode=types.ParseMode.HTML)
+                    await query.message.edit_text(t('USER_QUEUE_INFO', locale=user['lang'],
+                                                    queue_name=queue['name'],
+                                                    pos=queue['position']['relativePosition']),
+                                                  reply_markup=keyboards.get_update_my_queue_kbd(queue_id,
+                                                                                                 user['lang']),
+                                                  parse_mode=types.ParseMode.HTML)
 
                 else:
                     logger.error('Unknown queue position status', queue['position']['status'])
 
+                await query.answer()
             except exceptions.MessageNotModified:
                 await query.answer(t('NO_UPDATES', locale=user['lang']))
 

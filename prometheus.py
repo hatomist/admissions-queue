@@ -7,3 +7,4 @@ queue_registrations_cnt = Counter("admission_bot_queue_regisrations", "Bot RegIn
 geo_sent_cnt = Counter("admission_bot_geo_sent", "Bot Geo sent times counter")
 help_btn_cnt = Counter("admission_bot_help_btn", "Bot Help button clicks counter")
 start_handler_cnt = Counter("admission_bot_start_handler", "Start handler called times counter")
+api_requests_cnt = Counter("admission_bot_start_handler", "Bot to Admission API requests counter")

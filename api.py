@@ -1,6 +1,7 @@
 import logging
 import aiohttp
 from typing import Dict, Union
+import prometheus
 
 
 class AdmissionAPI:
@@ -12,6 +13,7 @@ class AdmissionAPI:
 
     async def register_user(self, uid: Union[int, str], username: Union[str, None], first_name: str,
                             last_name: Union[str, None]):
+        prometheus.api_requests_cnt.inc({})
         json = {}
         if username is not None:
             json['username'] = username
@@ -25,12 +27,14 @@ class AdmissionAPI:
                 self.logger.debug(f'Registered user {uid}')
 
     async def set_user_details(self, uid: Union[int, str], details: Dict[str, str]):
+        prometheus.api_requests_cnt.inc({})
         async with aiohttp.ClientSession(headers=self.headers) as session:
             async with session.put(self.host + f'/users/{uid}/registration', json=details) as resp:
                 assert resp.status == 200
                 self.logger.debug(f'Set details for user {uid}: {details}')
 
     async def set_user_certificate(self, uid: Union[int, str], cert: Union[int, str], fio: str):
+        prometheus.api_requests_cnt.inc({})
         async with aiohttp.ClientSession(headers=self.headers) as session:
             async with session.put(self.host + f'/users/{uid}/certificate', json={'certificate': cert,
                                                                                   'full_name': fio}) as resp:
@@ -52,6 +56,7 @@ class AdmissionAPI:
                 return resp.json()
 
     async def get_user_info(self, uid: Union[str, int]):
+        prometheus.api_requests_cnt.inc({})
         async with aiohttp.ClientSession(headers=self.headers) as session:
             async with session.get(self.host + f'/users/{uid}') as resp:
                 assert resp.status == 200, (await resp.json())['message'] + ' ' + (await resp.json())['details']
@@ -66,6 +71,7 @@ class AdmissionAPI:
                 return await resp.json()
 
     async def get_registration_template(self):
+        prometheus.api_requests_cnt.inc({})
         async with aiohttp.ClientSession(headers=self.headers) as session:
             async with session.get(self.host + f'/templates/registration') as resp:
                 assert resp.status == 200, (await resp.json())['message'] + ' ' + (await resp.json())['details']
@@ -73,6 +79,7 @@ class AdmissionAPI:
                 return await resp.json()
 
     async def add_user_to_queue(self, queue_id: Union[str, int], uid: Union[str, int]):
+        prometheus.api_requests_cnt.inc({})
         async with aiohttp.ClientSession(headers=self.headers) as session:
             async with session.post(self.host + f'/queues/{queue_id}/users', json={"id": str(uid)}) as resp:
                 assert resp.status == 200, (await resp.json())['message'] + ' ' + (await resp.json())['details']
@@ -80,6 +87,7 @@ class AdmissionAPI:
                 return await resp.json()
 
     async def remove_user_from_queue(self, queue_id: Union[str, int], uid: Union[str, int]):
+        prometheus.api_requests_cnt.inc({})
         async with aiohttp.ClientSession(headers=self.headers) as session:
             async with session.delete(self.host + f'/queues/{queue_id}/users/{uid}') as resp:
                 assert resp.status == 200, (await resp.json())['message'] + ' ' + (await resp.json())['details']
@@ -100,6 +108,7 @@ class AdmissionAPI:
                 return await resp.json()
 
     async def list_queues(self):
+        prometheus.api_requests_cnt.inc({})
         async with aiohttp.ClientSession(headers=self.headers) as session:
             async with session.get(self.host + f'/queues') as resp:
                 assert resp.status == 200, (await resp.json())['message'] + ' ' + (await resp.json())['details']

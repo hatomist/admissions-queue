@@ -37,8 +37,7 @@ def apply_handlers(aq: AdmissionQueue):
                 await start_handler(message)  # recursive
         else:
             await aq.aapi.register_user(message.from_user.id,
-                                        message.from_user.mention[1:] if message.from_user.mention.startswith(
-                                            '@') else None,
+                                        message.from_user.username,
                                         message.from_user.first_name,
                                         message.from_user.last_name)
 
@@ -190,6 +189,11 @@ def apply_handlers(aq: AdmissionQueue):
 
         elif query.data.startswith('ChangeData'):
             await db.users.delete_one({'uid': user['uid']})
+
+            query.message.from_user.id = query.from_user.id
+            query.message.from_user.username = query.from_user.username
+            query.message.from_user.first_name = query.from_user.first_name
+            query.message.from_user.last_name = query.from_user.last_name
             await start_handler(query.message)
             await query.message.delete_reply_markup()
 

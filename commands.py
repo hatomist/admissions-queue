@@ -142,8 +142,8 @@ def apply_handlers(aq: AdmissionQueue):
             prometheus.queue_registrations_cnt.inc({})
             queue_id = int(query.data.split('RegInQueue', 1)[1])
             await aq.aapi.add_user_to_queue(user['uid'], queue_id)
-            await query.message.edit_text(t('REGISTER_IN_QUEUE_SUCCESS', locale=user['lang']),
-                                          reply_markup=keyboards.get_menu_kbd(user['lang']))
+            query.data = f'GetMyQueue{queue_id}'  # override query to send current position in queue
+            await query_handler(query)
 
         elif query.data.startswith('Menu'):
             await db.users.find_one_and_update({'uid': user}, {'$set': {'stage': Stage.menu}})
@@ -184,18 +184,9 @@ def apply_handlers(aq: AdmissionQueue):
             await db.users.find_one_and_update({'uid': message.from_user.id}, {'$set': {'stage': Stage.menu}})
             await message.reply(t('GEO_SUCCESS', locale=user['lang']),
                                 reply_markup=types.ReplyKeyboardRemove())
-            await aq.aapi.add_user_to_queue(user['get_queue'], user['uid'])
 
-            user_data = await aq.aapi.get_user_info(user['uid'])
-            queues = user_data['queues']
-            queue_id = user['get_queue']
-            queue = list(filter(lambda x: queue_id == x['id'], queues))[0]
-
-            await message.answer(t('USER_QUEUE_INFO', locale=user['lang'], queue_name=queue['name'],
-                                   pos=queue['position']['relativePosition']),
-                                 reply_markup=keyboards.get_update_my_queue_kbd(queue_id,
-                                                                                user['lang']),
-                                 parse_mode=types.ParseMode.HTML)
+            await message.reply(t('REGISTER_IN_QUEUE', locale=user['lang']),
+                                reply_markup=keyboards.get_register_in_queue_kbd(user['lang']))
 
     async def text_handler(message: types.Message):
         user = await db.users.find_one({'uid': message.from_user.id})

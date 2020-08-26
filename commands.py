@@ -186,7 +186,7 @@ def apply_handlers(aq: AdmissionQueue):
                                 reply_markup=types.ReplyKeyboardRemove())
 
             await message.reply(t('REGISTER_IN_QUEUE', locale=user['lang']),
-                                reply_markup=keyboards.get_register_in_queue_kbd(user['lang']))
+                                reply_markup=keyboards.get_register_in_queue_kbd(user['get_queue'], user['lang']))
 
     async def text_handler(message: types.Message):
         user = await db.users.find_one({'uid': message.from_user.id})

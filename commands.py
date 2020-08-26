@@ -58,7 +58,7 @@ def apply_handlers(aq: AdmissionQueue):
                 await message.reply(t('WELCOME', locale=user['lang']), parse_mode=types.ParseMode.HTML)
                 await send_token_prompt(user, message)
             else:
-                user = db.users.insert_one({'uid': message.chat.id, 'lang': 'ua', 'stage': Stage.geo})
+                user = db.users.insert_one({'uid': message.chat.id, 'lang': 'ua', 'stage': Stage.menu})
                 await message.reply(t('MENU', locale='ua'), reply_markup=keyboards.get_menu_kbd(),
                                     parse_mode=types.ParseMode.HTML)
 
@@ -269,7 +269,7 @@ def apply_handlers(aq: AdmissionQueue):
         await aq.aapi.set_user_details(user['uid'], data)
 
         await db.users.find_one_and_update({'uid': user['uid']},
-                                           {'$set': {**data, 'stage': Stage.geo,
+                                           {'$set': {**data, 'stage': Stage.menu,
                                                      'opt_reg_completed': user['opt_reg']},
                                             '$inc': {'template_stage': 1},
                                             '$unset': {'template': '',

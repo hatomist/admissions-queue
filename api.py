@@ -30,8 +30,9 @@ class AdmissionAPI:
         prometheus.api_requests_cnt.inc({})
         async with aiohttp.ClientSession(headers=self.headers) as session:
             async with session.put(self.host + f'/users/{uid}/registration', json=details) as resp:
-                assert resp.status == 200
-                self.logger.debug(f'Set details for user {uid}: {details}')
+                assert resp.status == 200 or resp.status == 400
+                self.logger.debug(f'Set details for user {uid} with response code {resp.status}: {details}')
+                return await resp.json() if resp.status == 400 else None
 
     async def set_user_certificate(self, uid: Union[int, str], cert: Union[int, str], fio: str):
         prometheus.api_requests_cnt.inc({})

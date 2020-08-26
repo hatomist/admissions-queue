@@ -11,6 +11,7 @@ import config
 import logging
 from aiogram.utils import exceptions
 import prometheus
+import queue_num
 
 logger = logging.getLogger('commands')
 
@@ -22,12 +23,14 @@ def apply_handlers(aq: AdmissionQueue):
         if user is not None:
             if user['stage'] == Stage.menu:
                 await message.answer(t('MENU', locale=user['lang']), reply_markup=keyboards.get_menu_kbd(user['lang'],
-                                                                                                         user['opt_reg_completed']),
+                                                                                                         user[
+                                                                                                             'opt_reg_completed']),
                                      parse_mode=types.ParseMode.HTML)
             elif user['stage'] == Stage.geo or (user['stage'] == Stage.template and user['opt_reg']):
                 await db.users.find_one_and_update({'uid': user['uid']}, {'$set': {'stage': Stage.menu}})
                 await message.answer(t('MENU', locale=user['lang']), reply_markup=keyboards.get_menu_kbd(user['lang'],
-                                                                                                         user['opt_reg_completed']),
+                                                                                                         user[
+                                                                                                             'opt_reg_completed']),
                                      parse_mode=types.ParseMode.HTML)
             elif user['stage'] in [Stage.get_certnum, Stage.get_fio, Stage.template, Stage.register_btns]:
                 await db.users.delete_one({'uid': user['uid']})
@@ -172,7 +175,10 @@ def apply_handlers(aq: AdmissionQueue):
         elif query.data.startswith('RegInQueue'):
             prometheus.queue_registrations_cnt.inc({})
             queue_id = int(query.data.split('RegInQueue', 1)[1])
-            await aq.aapi.add_user_to_queue(queue_id, user['uid'])
+            position = await aq.aapi.add_user_to_queue(queue_id, user['uid'])
+            if 'position' in position and 'code' in position['position']:
+                await query.message.answer_photo(open(queue_num.get_num(position['position']['code']), 'rb'),
+                                                 caption=t('YOUR_QUEUE_CODE', locale=user['lang']))
             query.data = f'GetMyQueue{queue_id}'  # override query to send current position in queue
             await query_handler(query)
 

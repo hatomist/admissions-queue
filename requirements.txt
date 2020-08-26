@@ -5,3 +5,5 @@ python-i18n~=0.3.7
 PyYAML~=5.3.1
 numpy~=1.19.1
 aioprometheus~=20.0.1
+pymongo~=3.11.0
+Pillow~=7.2.0

@@ -166,6 +166,8 @@ def apply_handlers(aq: AdmissionQueue):
         lon = message.location.longitude
         user = await db.users.find_one({'uid': message.from_user.id})
 
+        prometheus.geo_sent_cnt.inc({})
+
         if user is None:
             return await start_handler(message)
 

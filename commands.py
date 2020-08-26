@@ -119,7 +119,7 @@ def apply_handlers(aq: AdmissionQueue):
                 try:
                     return await query.answer(t('USER_NO_MORE_IN_QUEUE'), user['lang'])
                 except exceptions.InvalidQueryID:
-                    pass  # ignore
+                    return  # ignore
             try:
 
                 if queue['position']['status'] == 'processing':

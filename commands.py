@@ -141,7 +141,7 @@ def apply_handlers(aq: AdmissionQueue):
         elif query.data.startswith('RegInQueue'):
             prometheus.queue_registrations_cnt.inc({})
             queue_id = int(query.data.split('RegInQueue', 1)[1])
-            await aq.aapi.add_user_to_queue(user['uid'], queue_id)
+            await aq.aapi.add_user_to_queue(queue_id, user['uid'])
             query.data = f'GetMyQueue{queue_id}'  # override query to send current position in queue
             await query_handler(query)
 

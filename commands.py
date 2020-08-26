@@ -1,5 +1,7 @@
 from aiogram import types
 from i18n import t
+from pymongo import ReturnDocument
+
 import keyboards
 import db
 from main import AdmissionQueue
@@ -19,16 +21,17 @@ def apply_handlers(aq: AdmissionQueue):
         user = await db.users.find_one({'uid': message.chat.id})
         if user is not None:
             if user['stage'] == Stage.menu:
-                await message.answer(t('MENU', locale=user['lang']), reply_markup=keyboards.get_menu_kbd(user['lang']),
+                await message.answer(t('MENU', locale=user['lang']), reply_markup=keyboards.get_menu_kbd(user['lang'],
+                                                                                                         user['opt_reg_completed']),
                                      parse_mode=types.ParseMode.HTML)
-            elif user['stage'] == Stage.geo:
+            elif user['stage'] == Stage.geo or (user['stage'] == Stage.template and user['opt_reg']):
                 await db.users.find_one_and_update({'uid': user['uid']}, {'$set': {'stage': Stage.menu}})
-                await message.answer(t('MENU', locale=user['lang']), reply_markup=keyboards.get_menu_kbd(user['lang']),
+                await message.answer(t('MENU', locale=user['lang']), reply_markup=keyboards.get_menu_kbd(user['lang'],
+                                                                                                         user['opt_reg_completed']),
                                      parse_mode=types.ParseMode.HTML)
             elif user['stage'] in [Stage.get_certnum, Stage.get_fio, Stage.template, Stage.register_btns]:
                 await db.users.delete_one({'uid': user['uid']})
                 await start_handler(message)  # recursive
-                pass  # some other input expected
         else:
             await aq.aapi.register_user(message.from_user.id,
                                         message.from_user.mention[1:] if message.from_user.mention.startswith(
@@ -37,14 +40,20 @@ def apply_handlers(aq: AdmissionQueue):
                                         message.from_user.last_name)
 
             if config.REGISTRATION:
-                prometheus.user_registrations_cnt.inc({})
                 template = (await aq.aapi.get_registration_template())['template']
-                num = len(template['tokens'])
-                await db.users.find_one_and_update({'uid': message.chat.id}, {'$set': {'stage': Stage.template,
-                                                                                       'template_stage': 0,
-                                                                                       'tokens_num': num,
-                                                                                       'template': template}})
-                await message.answer(template['tokens'][0]['text'])
+                tokens_non_optional = list(filter(lambda x: not x['optional'], template['tokens']))
+                num = len(tokens_non_optional)
+                user = await db.users.find_one_and_update({'uid': message.chat.id}, {'$set': {'stage': Stage.template,
+                                                                                              'template_stage': 0,
+                                                                                              'tokens_num': num,
+                                                                                              'tokens': tokens_non_optional,
+                                                                                              'opt_reg': False,
+                                                                                              'opt_reg_completed': False,
+                                                                                              'lang': 'ua'}},
+                                                          upsert=True, return_document=ReturnDocument.AFTER)
+                user['template_stage'] = -1
+                await message.reply(t('WELCOME', locale=user['lang']), parse_mode=types.ParseMode.HTML)
+                await send_token_prompt(user, message)
             else:
                 user = db.users.insert_one({'uid': message.chat.id, 'lang': 'ua', 'stage': Stage.geo})
                 await message.reply(t('MENU', locale='ua'), reply_markup=keyboards.get_menu_kbd(),
@@ -170,13 +179,40 @@ def apply_handlers(aq: AdmissionQueue):
         elif query.data.startswith('Menu'):
             await db.users.find_one_and_update({'uid': user}, {'$set': {'stage': Stage.menu}})
             await query.message.edit_text(t('MENU', locale=user['lang']),
-                                          reply_markup=keyboards.get_menu_kbd(user['lang']),
+                                          reply_markup=keyboards.get_menu_kbd(user['lang'], user['opt_reg_completed']),
                                           parse_mode=types.ParseMode.HTML)
 
         elif query.data.startswith('ChangeData'):
             await db.users.delete_one({'uid': user['uid']})
             await start_handler(query.message)
             await query.message.delete_reply_markup()
+
+        elif query.data.startswith('OptReg'):
+            template = (await aq.aapi.get_registration_template())['template']
+            tokens_optional = list(filter(lambda x: x['optional'], template['tokens']))
+            num = len(tokens_optional)
+            user = await db.users.find_one_and_update({'uid': user['uid']}, {'$set': {'stage': Stage.template,
+                                                                                      'template_stage': 0,
+                                                                                      'tokens_num': num,
+                                                                                      'tokens': tokens_optional,
+                                                                                      'opt_reg': True,
+                                                                                      'opt_reg_completed': False}},
+                                                      return_document=ReturnDocument.AFTER)
+            user['template_stage'] = -1
+            await send_token_prompt(user, query.message)
+
+        elif query.data.startswith('Token'):
+            data = {('o_' if user['opt_reg'] else 't_') + user['tokens'][user['template_stage']][
+                'token']: query.data.split('Token', 1)[1].strip()}
+            await query.message.delete_reply_markup()
+            if user['template_stage'] + 1 == user['tokens_num']:
+                return await complete_token_registration(user, query.message)
+
+            await send_token_prompt(user, query.message)
+
+            await db.users.find_one_and_update({'uid': user['uid']},
+                                               {'$set': {**data},
+                                                '$inc': {'template_stage': 1}})
 
         else:
             logger.warning(f'Got invalid command {query.data}')
@@ -210,6 +246,43 @@ def apply_handlers(aq: AdmissionQueue):
             await message.reply(t('REGISTER_IN_QUEUE', locale=user['lang']),
                                 reply_markup=keyboards.get_register_in_queue_kbd(user['get_queue'], user['lang']))
 
+    async def complete_token_registration(user, message):
+        if user['opt_reg']:
+            prefix = 'o_'
+            prometheus.user_full_registrations_cnt.inc({})
+        else:
+            prefix = 't_'
+            prometheus.user_registrations_cnt.inc({})
+        user[prefix + user['tokens'][user['template_stage']]['token']] = message.text.strip()
+
+        data = {}
+        for key in user:
+            if key.startswith(prefix):
+                data[key.split(prefix, 1)[1]] = user[key]
+
+        await aq.aapi.set_user_details(user['uid'], data)
+
+        await db.users.find_one_and_update({'uid': user['uid']},
+                                           {'$set': {**data, 'stage': Stage.geo,
+                                                     'opt_reg_completed': user['opt_reg']},
+                                            '$inc': {'template_stage': 1},
+                                            '$unset': {'template': '',
+                                                       'opt_reg': ''}})
+
+        await message.answer(t('MENU', locale=user['lang']),
+                             reply_markup=keyboards.get_menu_kbd(user['lang'], user['opt_reg']),
+                             parse_mode=types.ParseMode.HTML)
+
+    async def send_token_prompt(user, message):
+        kbd = None
+        if 'values' in user['tokens'][user['template_stage'] + 1]:
+            kbd_entries = list(map(lambda x: types.InlineKeyboardButton(text=x, callback_data=f'Token{x}'),
+                                   user['tokens'][user['template_stage'] + 1]['values']))
+            kbd = types.InlineKeyboardMarkup(row_width=2,
+                                             inline_keyboard=list(keyboards.divide_chunks(kbd_entries, 2)))
+        await message.answer(user['tokens'][user['template_stage'] + 1]['text'], reply_markup=kbd,
+                             parse_mode=types.ParseMode.HTML)
+
     async def text_handler(message: types.Message):
         user = await db.users.find_one({'uid': message.from_user.id})
 
@@ -234,27 +307,16 @@ def apply_handlers(aq: AdmissionQueue):
         #                          parse_mode=types.ParseMode.HTML)
 
         elif user['stage'] == Stage.template:
-            data = {'t_' + user['template']['tokens'][user['template_stage']]['token']: message.text.strip()}
+            data = {('o_' if user['opt_reg'] else 't_') + user['tokens'][user['template_stage']][
+                'token']: message.text.strip()}
+
+            if 'values' in user['tokens'][user['template_stage']]:
+                return await message.answer(t('REG_USE_BUTTONS', locale=user['lang']))
 
             if user['template_stage'] + 1 == user['tokens_num']:
-                user['t_' + user['template']['tokens'][user['template_stage']]['token']] = message.text.strip()
+                return await complete_token_registration(user, message)
 
-                data = {}
-                for key in user:
-                    if key.startswith('t_'):
-                        data[key.split('t_', 1)[1]] = user[key]
-
-                await aq.aapi.set_user_details(user['uid'], data)
-
-                await message.answer(t('MENU', locale=user['lang']), reply_markup=keyboards.get_menu_kbd(user['lang']),
-                                     parse_mode=types.ParseMode.HTML)
-
-                return await db.users.find_one_and_update({'uid': user['uid']},
-                                                          {'$set': {**data, 'stage': Stage.geo},
-                                                           '$inc': {'template_stage': 1},
-                                                           '$unset': {'template': ''}})
-
-            await message.answer(user['template']['tokens'][user['template_stage'] + 1]['text'])
+            await send_token_prompt(user, message)
 
             await db.users.find_one_and_update({'uid': user['uid']},
                                                {'$set': {**data},
@@ -268,7 +330,7 @@ def apply_handlers(aq: AdmissionQueue):
                     pass  # ignore if already removed
                 await db.users.find_one_and_update({'uid': user['uid']}, {'$set': {'stage': Stage.menu}})
                 await message.answer(t('LEAVE_QUEUE_SUCCESS', locale=user['lang']),
-                                     reply_markup=keyboards.get_menu_kbd(user['lang']),
+                                     reply_markup=keyboards.get_menu_kbd(user['lang'], user['opt_reg_completed']),
                                      parse_mode=types.ParseMode.HTML)
 
     handlers = [

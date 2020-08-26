@@ -2,6 +2,7 @@ from aioprometheus import Counter
 
 bot_requests_cnt = Counter("admission_bot_requests", "Bot requests counter")
 user_registrations_cnt = Counter("admission_bot_user_registrations", "Bot user registrations counter")
+user_full_registrations_cnt = Counter("admission_bot_user_full_registrations", "Bot user full registrations counter")
 get_my_queue_cnt = Counter("admission_bot_get_my_queue", "Bot GetMyQueue calls counter")
 queue_registrations_cnt = Counter("admission_bot_queue_regisrations", "Bot RegInQueue calls counter")
 geo_sent_cnt = Counter("admission_bot_geo_sent", "Bot Geo sent times counter")

@@ -34,23 +34,44 @@ def get_geo_kbd(lang='ua'):
 #     )
 
 
-def get_menu_kbd(lang='ua'):
-    return types.InlineKeyboardMarkup(
-        row_width=2,
-        inline_keyboard=(
-            (
-                types.InlineKeyboardButton(t('SHOW_ALL_QUEUES_BTN', locale=lang), callback_data='AllQueues'),
-                types.InlineKeyboardButton(t('SHOW_MY_QUEUES_BTN', locale=lang), callback_data='MyQueues'),
-            ),
-            (
-                types.InlineKeyboardButton(t('HELP_BTN', locale=lang), url=t('TELEGRAPH_URL', locale=lang)),
-                types.InlineKeyboardButton(t('TECHSUPPORT_BTN', locale=lang), url=t('LIVEGRAM_URL', locale=lang)),
-            ),
-            (
-                types.InlineKeyboardButton(t('CHANGE_DATA_BTN', locale=lang), callback_data='ChangeData'),
+def get_menu_kbd(lang='ua', opt_reg_done: bool = False):
+    if opt_reg_done:
+        return types.InlineKeyboardMarkup(
+            row_width=2,
+            inline_keyboard=(
+                (
+                    types.InlineKeyboardButton(t('SHOW_ALL_QUEUES_BTN', locale=lang), callback_data='AllQueues'),
+                    types.InlineKeyboardButton(t('SHOW_MY_QUEUES_BTN', locale=lang), callback_data='MyQueues'),
+                ),
+                (
+                    types.InlineKeyboardButton(t('HELP_BTN', locale=lang), url=t('TELEGRAPH_URL', locale=lang)),
+                    types.InlineKeyboardButton(t('TECHSUPPORT_BTN', locale=lang), url=t('LIVEGRAM_URL', locale=lang)),
+                ),
+                (
+                    types.InlineKeyboardButton(t('CHANGE_DATA_BTN', locale=lang), callback_data='ChangeData'),
+                )
             )
         )
-    )
+    else:
+        return types.InlineKeyboardMarkup(
+            row_width=2,
+            inline_keyboard=(
+                (
+                    types.InlineKeyboardButton(t('OPT_REGISTRATION_BTN', locale=lang), callback_data='OptReg'),
+                ),
+                (
+                    types.InlineKeyboardButton(t('SHOW_ALL_QUEUES_BTN', locale=lang), callback_data='AllQueues'),
+                    types.InlineKeyboardButton(t('SHOW_MY_QUEUES_BTN', locale=lang), callback_data='MyQueues'),
+                ),
+                (
+                    types.InlineKeyboardButton(t('HELP_BTN', locale=lang), url=t('TELEGRAPH_URL', locale=lang)),
+                    types.InlineKeyboardButton(t('TECHSUPPORT_BTN', locale=lang), url=t('LIVEGRAM_URL', locale=lang)),
+                ),
+                (
+                    types.InlineKeyboardButton(t('CHANGE_DATA_BTN', locale=lang), callback_data='ChangeData'),
+                )
+            )
+        )
 
 
 def get_info_kbd(lang='ua'):

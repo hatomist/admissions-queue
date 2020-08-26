@@ -74,6 +74,7 @@ class AdmissionQueue:
         self._prometheus_registry = Registry()
         self._prometheus_registry.register(prometheus.bot_requests_cnt)
         self._prometheus_registry.register(prometheus.user_registrations_cnt)
+        self._prometheus_registry.register(prometheus.user_full_registrations_cnt)
         self._prometheus_registry.register(prometheus.queue_registrations_cnt)
         self._prometheus_registry.register(prometheus.get_my_queue_cnt)
         self._prometheus_registry.register(prometheus.geo_sent_cnt)
@@ -83,6 +84,7 @@ class AdmissionQueue:
 
         prometheus.bot_requests_cnt.set({}, 0)
         prometheus.user_registrations_cnt.set({}, 0)
+        prometheus.user_full_registrations_cnt.set({}, 0)
         prometheus.queue_registrations_cnt.set({}, 0)
         prometheus.get_my_queue_cnt.set({}, 0)
         prometheus.geo_sent_cnt.set({}, 0)

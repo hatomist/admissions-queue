@@ -22,7 +22,7 @@ class SafeBot(Bot):
                 pass
             except Exception as e:
                 prometheus.bot_requests_cnt.inc({})
-                logging.error('Exception in event scheduler:', e)
+                logging.error(f'Exception in event scheduler: {e}')
 
         self._scheduler = Timer(1 / self._reqs_per_second, event_scheduler, infinite=True, immediate=True)
         super().__init__(token)

@@ -20,18 +20,18 @@ def get_geo_kbd(lang='ua'):
     )
 
 
-def get_reg_kbd(lang='ua'):
-    return types.InlineKeyboardMarkup(
-        row_width=1,
-        inline_keyboard=(
-            (
-                types.InlineKeyboardButton(t('CERT_REG_BTN', locale=lang), callback_data='CertReg'),
-            ),
-            (
-                types.InlineKeyboardButton(t('MANUAL_REG_BTN', locale=lang), callback_data='ManualReg'),
-            )
-        )
-    )
+# def get_reg_kbd(lang='ua'):
+#     return types.InlineKeyboardMarkup(
+#         row_width=1,
+#         inline_keyboard=(
+#             (
+#                 types.InlineKeyboardButton(t('CERT_REG_BTN', locale=lang), callback_data='CertReg'),
+#             ),
+#             (
+#                 types.InlineKeyboardButton(t('MANUAL_REG_BTN', locale=lang), callback_data='ManualReg'),
+#             )
+#         )
+#     )
 
 
 def get_menu_kbd(lang='ua'):

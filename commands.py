@@ -38,8 +38,13 @@ def apply_handlers(aq: AdmissionQueue):
 
             if config.REGISTRATION:
                 prometheus.user_registrations_cnt.inc({})
-                user = db.users.insert_one({'uid': message.chat.id, 'lang': 'ua', 'stage': Stage.register_btns})
-                await message.reply(t('PRE_REG', locale='ua'), reply_markup=keyboards.get_reg_kbd())
+                template = (await aq.aapi.get_registration_template())['template']
+                num = len(template['tokens'])
+                await db.users.find_one_and_update({'uid': message.chat.id}, {'$set': {'stage': Stage.template,
+                                                                                       'template_stage': 0,
+                                                                                       'tokens_num': num,
+                                                                                       'template': template}})
+                await message.answer(template['tokens'][0]['text'])
             else:
                 user = db.users.insert_one({'uid': message.chat.id, 'lang': 'ua', 'stage': Stage.geo})
                 await message.reply(t('MENU', locale='ua'), reply_markup=keyboards.get_menu_kbd(),
@@ -57,18 +62,18 @@ def apply_handlers(aq: AdmissionQueue):
             except exceptions.InvalidQueryID:
                 pass  # ignore
 
-        if query.data.startswith('CertReg'):
-            await db.users.find_one_and_update({'uid': user['uid']}, {'$set': {'stage': Stage.get_certnum}})
-            return await query.message.edit_text(t('GET_CERTNUM'))
-
-        elif query.data.startswith('ManualReg'):
-            template = (await aq.aapi.get_registration_template())['template']
-            num = len(template['tokens'])
-            await db.users.find_one_and_update({'uid': user['uid']}, {'$set': {'stage': Stage.template,
-                                                                               'template_stage': 0,
-                                                                               'tokens_num': num,
-                                                                               'template': template}})
-            await query.message.answer(template['tokens'][0]['text'])
+        # if query.data.startswith('CertReg'):
+        #     await db.users.find_one_and_update({'uid': user['uid']}, {'$set': {'stage': Stage.get_certnum}})
+        #     return await query.message.edit_text(t('GET_CERTNUM'))
+        #
+        # elif query.data.startswith('ManualReg'):
+        #     template = (await aq.aapi.get_registration_template())['template']
+        #     num = len(template['tokens'])
+        #     await db.users.find_one_and_update({'uid': user['uid']}, {'$set': {'stage': Stage.template,
+        #                                                                        'template_stage': 0,
+        #                                                                        'tokens_num': num,
+        #                                                                        'template': template}})
+        #     await query.message.answer(template['tokens'][0]['text'])
 
         elif query.data.startswith('AllQueues'):
             queues = (await aq.aapi.list_queues())['queues']
@@ -211,22 +216,22 @@ def apply_handlers(aq: AdmissionQueue):
         if user is None:
             return await start_handler(message)
 
-        elif user['stage'] == Stage.get_certnum:
-            await db.users.find_one_and_update({'uid': user['uid']}, {'$set': {'certnum': message.text.strip(),
-                                                                               'stage': Stage.get_fio}})
-            return await message.reply(t('GET_FIO', locale=user['lang']))
-
-        elif user['stage'] == Stage.get_fio:
-            ret, retmsg = await aq.aapi.set_user_certificate(user['uid'], user['certnum'], message.text.strip())
-
-            if ret == 400:
-                return await message.reply(t('CERT_REG_FAILED', locale=user['lang'], reason=retmsg),
-                                           reply_markup=keyboards.get_reg_kbd(user['lang']))
-
-            await db.users.find_one_and_update({'uid': user['uid']},
-                                               {'$set': {'stage': Stage.geo, 'fio': message.text}})
-            await message.answer(t('MENU', locale=user['lang']), reply_markup=keyboards.get_menu_kbd(user['lang']),
-                                 parse_mode=types.ParseMode.HTML)
+        # elif user['stage'] == Stage.get_certnum:
+        #     await db.users.find_one_and_update({'uid': user['uid']}, {'$set': {'certnum': message.text.strip(),
+        #                                                                        'stage': Stage.get_fio}})
+        #     return await message.reply(t('GET_FIO', locale=user['lang']))
+        #
+        # elif user['stage'] == Stage.get_fio:
+        #     ret, retmsg = await aq.aapi.set_user_certificate(user['uid'], user['certnum'], message.text.strip())
+        #
+        #     if ret == 400:
+        #         return await message.reply(t('CERT_REG_FAILED', locale=user['lang'], reason=retmsg),
+        #                                    reply_markup=keyboards.get_reg_kbd(user['lang']))
+        #
+        #     await db.users.find_one_and_update({'uid': user['uid']},
+        #                                        {'$set': {'stage': Stage.geo, 'fio': message.text}})
+        #     await message.answer(t('MENU', locale=user['lang']), reply_markup=keyboards.get_menu_kbd(user['lang']),
+        #                          parse_mode=types.ParseMode.HTML)
 
         elif user['stage'] == Stage.template:
             data = {'t_' + user['template']['tokens'][user['template_stage']]['token']: message.text.strip()}

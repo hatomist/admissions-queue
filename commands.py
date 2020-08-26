@@ -266,18 +266,29 @@ def apply_handlers(aq: AdmissionQueue):
             if key.startswith(prefix):
                 data[key.split(prefix, 1)[1]] = user[key]
 
-        await aq.aapi.set_user_details(user['uid'], data)
+        ret = await aq.aapi.set_user_details(user['uid'], data)
+        if ret is not None:
+            user = await db.users.find_one_and_update({'uid': user['uid']},
+                                                      {'$set': {**data,
+                                                                'opt_reg': user['opt_reg'],
+                                                                'template_stage': 0,
+                                                                'tokens': ret['template']['tokens'],
+                                                                'tokens_num': len(ret['template']['tokens'])
+                                                                }}, return_document=ReturnDocument.AFTER)
+            user['template_stage'] = -1
+            await message.answer(t('SOME_TOKENS_INVALID', locale=user['lang']))
+            await send_token_prompt(user, message)
+        else:
+            await db.users.find_one_and_update({'uid': user['uid']},
+                                               {'$set': {**data, 'stage': Stage.menu,
+                                                         'opt_reg_completed': user['opt_reg']},
+                                                '$inc': {'template_stage': 1},
+                                                '$unset': {'tokens': '',
+                                                           'opt_reg': ''}})
 
-        await db.users.find_one_and_update({'uid': user['uid']},
-                                           {'$set': {**data, 'stage': Stage.menu,
-                                                     'opt_reg_completed': user['opt_reg']},
-                                            '$inc': {'template_stage': 1},
-                                            '$unset': {'template': '',
-                                                       'opt_reg': ''}})
-
-        await message.answer(t('MENU', locale=user['lang']),
-                             reply_markup=keyboards.get_menu_kbd(user['lang'], user['opt_reg']),
-                             parse_mode=types.ParseMode.HTML)
+            await message.answer(t('MENU', locale=user['lang']),
+                                 reply_markup=keyboards.get_menu_kbd(user['lang'], user['opt_reg']),
+                                 parse_mode=types.ParseMode.HTML)
 
     async def send_token_prompt(user, message):
         kbd = None

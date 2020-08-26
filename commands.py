@@ -159,7 +159,10 @@ def apply_handlers(aq: AdmissionQueue):
         else:
             logger.warning(f'Got invalid command {query.data}')
 
-        await query.answer()
+        try:
+            await query.answer()  # try to answer query if not answered already
+        except exceptions.InvalidQueryID:  # already answered
+            pass
 
     async def location_handler(message: types.Message):
         lat = message.location.latitude

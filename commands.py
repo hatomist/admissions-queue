@@ -52,7 +52,10 @@ def apply_handlers(aq: AdmissionQueue):
     async def query_handler(query: types.CallbackQuery):
         user = await db.users.find_one({'uid': query.from_user.id})
         if user is None:
-            return await query.answer()
+            try:
+                return await query.answer()
+            except exceptions.InvalidQueryID:
+                pass  # ignore
 
         if query.data.startswith('CertReg'):
             await db.users.find_one_and_update({'uid': user['uid']}, {'$set': {'stage': Stage.get_certnum}})
@@ -74,7 +77,10 @@ def apply_handlers(aq: AdmissionQueue):
                 await query.message.edit_text(t('ALL_QUEUES', locale=user['lang']),
                                               reply_markup=keyboards.get_queues_kbd(queues, my_queues=False))
             else:
-                await query.answer(t('NO_QUEUES', locale=user['lang']))
+                try:
+                    await query.answer(t('NO_QUEUES', locale=user['lang']))
+                except exceptions.InvalidQueryID:
+                    pass  # ignore
 
         elif query.data.startswith('MyQueues'):
             user_data = await aq.aapi.get_user_info(user['uid'])
@@ -84,7 +90,10 @@ def apply_handlers(aq: AdmissionQueue):
                 await query.message.edit_text(t('MY_QUEUES', locale=user['lang']),
                                               reply_markup=keyboards.get_queues_kbd(queues, my_queues=True))
             else:
-                await query.answer(t('NO_MY_QUEUES', locale=user['lang']))
+                try:
+                    await query.answer(t('NO_MY_QUEUES', locale=user['lang']))
+                except exceptions.InvalidQueryID:
+                    pass  # ignore
 
         elif query.data.startswith('GetQueue'):
             user_data = await aq.aapi.get_user_info(user['uid'])
@@ -107,7 +116,10 @@ def apply_handlers(aq: AdmissionQueue):
             try:
                 queue = list(filter(lambda x: queue_id == x['id'], queues))[0]
             except IndexError:
-                return await query.answer(t('USER_NO_MORE_IN_QUEUE'), user['lang'])
+                try:
+                    return await query.answer(t('USER_NO_MORE_IN_QUEUE'), user['lang'])
+                except exceptions.InvalidQueryID:
+                    pass  # ignore
             try:
 
                 if queue['position']['status'] == 'processing':
@@ -130,7 +142,12 @@ def apply_handlers(aq: AdmissionQueue):
 
                 await query.answer()
             except exceptions.MessageNotModified:
-                await query.answer(t('NO_UPDATES', locale=user['lang']))
+                try:
+                    await query.answer(t('NO_UPDATES', locale=user['lang']))
+                except exceptions.InvalidQueryID:
+                    pass  # ignore
+            except exceptions.InvalidQueryID:
+                pass  # ignore
 
         elif query.data.startswith('LeaveQueue'):
             queue_id = int(query.data.split('LeaveQueue', 1)[1])

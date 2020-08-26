@@ -26,7 +26,7 @@ def apply_handlers(aq: AdmissionQueue):
                                                                                                          user[
                                                                                                              'opt_reg_completed']),
                                      parse_mode=types.ParseMode.HTML)
-            elif user['stage'] == Stage.geo or (user['stage'] == Stage.template and user['opt_reg']):
+            elif user['stage'] in [Stage.geo, Stage.leave_queue] or (user['stage'] == Stage.template and user['opt_reg']):
                 await db.users.find_one_and_update({'uid': user['uid']}, {'$set': {'stage': Stage.menu}})
                 await message.answer(t('MENU', locale=user['lang']), reply_markup=keyboards.get_menu_kbd(user['lang'],
                                                                                                          user[

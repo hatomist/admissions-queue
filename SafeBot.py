@@ -20,6 +20,8 @@ class SafeBot(Bot):
                 prometheus.bot_requests_cnt.inc({})
             except IndexError:
                 pass
+            except exceptions.MessageNotModified:
+                pass  # ignore, most probably because of queries
             except Exception as e:
                 prometheus.bot_requests_cnt.inc({})
                 logging.error(f'Exception in event scheduler: {e}')

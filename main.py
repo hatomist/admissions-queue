@@ -107,7 +107,7 @@ if __name__ == '__main__':
 
     if 'WEBHOOK_HOST' in os.environ:
         host = os.environ['WEBHOOK_HOST']
-        port = os.environ['WEBHOOK_PORT']
+        port = os.environ['WEBHOOK_PORT'] if 'WEBHOOK_PORT' in os.environ else 443
 
         async def on_startup(dp):
             await aq.bot.set_webhook(host)

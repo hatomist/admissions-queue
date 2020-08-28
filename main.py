@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 from os import getcwd, path
@@ -12,6 +13,7 @@ from SafeBot import SafeBot
 from urllib.parse import parse_qs
 from aioprometheus import render, Registry, Counter, Service
 import prometheus
+from timer import Timer
 
 
 class AdmissionQueue:
@@ -67,8 +69,22 @@ class AdmissionQueue:
                                         parse_mode=query['parse_mode'][0] if 'parse_mode' in query else None)
             return web.Response()
 
+        async def broadcast_handler(request: web.Request):
+            if request.headers['Authorization'] != f'Bearer {aapi_token}':
+                return web.Response(status=401)
+            query = await request.json()
+
+            async def send():
+                for uid in query['uids']:
+                    await self.bot.send_message(chat_id=uid, text=query['text'],
+                                                parse_mode=query['parse_mode'] if 'parse_mode' in query else None)
+                    await asyncio.sleep(1/5)  # 5 msg/second
+            t = Timer(0, send, False, True)
+            return web.Response()
+
         webapp = web.Application()
         webapp.router.add_post('/sendMessage', send_message_handler)
+        webapp.router.add_post('/broadcastMessage', broadcast_handler)
 
         # Prometheus setup
         self._prometheus_registry = Registry()

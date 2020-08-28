@@ -12,6 +12,7 @@ import logging
 from aiogram.utils import exceptions
 import prometheus
 import queue_num
+from datetime import datetime
 
 logger = logging.getLogger('commands')
 
@@ -40,6 +41,10 @@ def apply_handlers(aq: AdmissionQueue):
                                         message.from_user.username,
                                         message.from_user.first_name,
                                         message.from_user.last_name)
+
+            now = datetime.now()
+            if (10 <= now.hour) or (now.hour >= 18):
+                await message.reply(t('QUEUE_NOT_WORKING_NOW'), parse_mode=types.ParseMode.HTML)
 
             if config.REGISTRATION:
                 template = (await aq.aapi.get_registration_template())['template']

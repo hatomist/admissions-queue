@@ -86,7 +86,7 @@ class AdmissionAPI:
                 assert resp.status == 200 or resp.status == 404 or resp.status == 400,\
                     (await resp.json())['message'] + ' ' + str(resp.status)
                 self.logger.debug(f'Added user {uid} to queue {queue_id}: {await resp.json()}')
-                return await resp.json()
+                return await resp.json(), resp.status
 
     async def remove_user_from_queue(self, queue_id: Union[str, int], uid: Union[str, int]):
         prometheus.api_requests_cnt.inc({})

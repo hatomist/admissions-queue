@@ -43,7 +43,7 @@ def apply_handlers(aq: AdmissionQueue):
                                         message.from_user.last_name)
 
             now = datetime.now()
-            if (10 <= now.hour) or (now.hour >= 18):
+            if (now.hour <= 10) or (now.hour >= 18):
                 await message.reply(t('QUEUE_NOT_WORKING_NOW'), parse_mode=types.ParseMode.HTML)
 
             if config.REGISTRATION:

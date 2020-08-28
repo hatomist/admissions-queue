@@ -83,7 +83,8 @@ class AdmissionAPI:
         prometheus.api_requests_cnt.inc({})
         async with aiohttp.ClientSession(headers=self.headers) as session:
             async with session.post(self.host + f'/queues/{queue_id}/users', json={"id": str(uid)}) as resp:
-                assert resp.status == 200 or resp.status == 404, (await resp.json())['message'] + ' ' + str(resp.status)
+                assert resp.status == 200 or resp.status == 404 or resp.status == 400,\
+                    (await resp.json())['message'] + ' ' + str(resp.status)
                 self.logger.debug(f'Added user {uid} to queue {queue_id}: {await resp.json()}')
                 return await resp.json()
 

@@ -177,9 +177,13 @@ def apply_handlers(aq: AdmissionQueue):
             return await query.message.edit_text(t('LEAVE_QUEUE'), reply_markup=keyboards.get_to_menu_kbd(user['lang']))
 
         elif query.data.startswith('RegInQueue'):
-            prometheus.queue_registrations_cnt.inc({})
             queue_id = int(query.data.split('RegInQueue', 1)[1])
-            position = await aq.aapi.add_user_to_queue(queue_id, user['uid'])
+            position, code = await aq.aapi.add_user_to_queue(queue_id, user['uid'])
+            if code == 400:
+                return await query.answer(position['message'])
+
+            prometheus.queue_registrations_cnt.inc({})
+
             if 'position' in position and 'code' in position['position']:
                 await query.message.answer_photo(open(queue_num.get_num(position['position']['code']), 'rb'),
                                                  caption=t('YOUR_QUEUE_CODE', locale=user['lang']))

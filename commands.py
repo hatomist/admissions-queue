@@ -153,7 +153,7 @@ def apply_handlers(aq: AdmissionQueue):
                 elif queue['position']['status'] == 'waiting':
                     await query.message.edit_text(t('USER_QUEUE_INFO', locale=user['lang'],
                                                     queue_name=queue['name'],
-                                                    pos=queue['position']['relativePosition']),
+                                                    pos=queue['position']['relativePosition'], abs_pos=queue['position']['code']),
                                                   reply_markup=keyboards.get_update_my_queue_kbd(queue_id,
                                                                                                  user['lang']),
                                                   parse_mode=types.ParseMode.HTML)

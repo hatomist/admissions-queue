@@ -137,7 +137,7 @@ if __name__ == '__main__':
                                  on_shutdown=on_shutdown,
                                  web_app=aq.webapp)
 
-        e.run_app(host='localhost', port=port)
+        e.run_app(host='0.0.0.0', port=port)
 
     else:
         executor.start_polling(aq.dp, skip_updates=True)

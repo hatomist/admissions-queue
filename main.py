@@ -116,12 +116,13 @@ class AdmissionQueue:
 
         # Run web server
         self.webapp = webapp
+        self.site = None
 
 
 if __name__ == '__main__':
     aq = AdmissionQueue()
 
-    if 'WEBHOOK_HOST' in os.environ:
+    if 'WEBHOOK_HOST' in os.environ and os.environ['WEBHOOK_HOST']:
         host = os.environ['WEBHOOK_HOST']
         port = os.environ['WEBHOOK_PORT'] if 'WEBHOOK_PORT' in os.environ else 443
 
@@ -140,4 +141,12 @@ if __name__ == '__main__':
         e.run_app(host='0.0.0.0', port=port)
 
     else:
-        executor.start_polling(aq.dp, skip_updates=True)
+        async def on_startup(dp):
+            runner = web.AppRunner(aq.webapp)
+            await runner.setup()
+            aq.site = web.TCPSite(runner, '0.0.0.0', 80)
+            await aq.site.start()
+
+        async def on_shutdown(dp):
+            await aq.site.stop()
+        executor.start_polling(aq.dp, skip_updates=True, on_startup=on_startup, on_shutdown=on_shutdown)

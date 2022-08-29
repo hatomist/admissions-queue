@@ -8,7 +8,7 @@ def gen_image(num):
     num = str(num)
     W, H = (640, 360)
     img = Image.new('RGB', (W, H), color='#FFE4C4')
-    fnt = ImageFont.truetype('/usr/share/fonts/TTF/Montserrat-Bold.ttf', 120)
+    fnt = ImageFont.truetype('./Montserrat-Bold.ttf', 120)
     d = ImageDraw.Draw(img)
     w, h = d.textsize(num, font=fnt)
     d.text(((W-w)/2, (H-h)/2-16), num, fill='black', font=fnt)

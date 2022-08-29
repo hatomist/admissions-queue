@@ -11,7 +11,6 @@ import config
 import logging
 from aiogram.utils import exceptions
 import prometheus
-import queue_num
 from datetime import datetime
 
 logger = logging.getLogger('commands')
@@ -185,7 +184,7 @@ def apply_handlers(aq: AdmissionQueue):
             prometheus.queue_registrations_cnt.inc({})
 
             if 'position' in position and 'code' in position['position']:
-                await query.message.answer_photo(open(queue_num.get_num(position['position']['code']), 'rb'),
+                await query.message.answer_photo(open(f'q_nums/{position["position"]["code"]}.jpg', 'rb'),
                                                  caption=t('YOUR_QUEUE_CODE', locale=user['lang']))
             query.data = f'GetMyQueue{queue_id}'  # override query to send current position in queue
             await query_handler(query)
